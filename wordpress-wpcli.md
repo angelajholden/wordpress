@@ -16,33 +16,27 @@ Verify installation:
 wp --info
 ```
 
-Official documentation: https://wp-cli.org/
+Official documentation: [WP-CLI](https://wp-cli.org/).
 
-## 2. Use MAMP's PHP
+## 2. Use MAMP's PHP and MySQL
 
-WP-CLI needs to use a PHP version compatible with the local WordPress installation.
+Homebrew's PHP may differ from MAMP's web PHP. In the stream, WP-CLI initially used Homebrew PHP 8.5 and reported a bundled dependency deprecation warning; switching to MAMP PHP 8.4.1 removed it. Match the PHP selected in MAMP rather than treating the warning as a theme error.
 
-List available MAMP PHP versions:
+**Local terminal:** identify installed versions, then prepend their executable directories. These paths worked on October 18, 2026; substitute your installed versions.
 
 ```bash
 ls /Applications/MAMP/bin/php/
-```
-
-Add the selected version to your terminal's PATH:
-
-```bash
-export PATH="/Applications/MAMP/bin/php/<php-version>/bin:$PATH"
-```
-
-Verify:
-
-```bash
+find /Applications/MAMP/Library -type f -name mysql
+export PATH="/Applications/MAMP/bin/php/php8.4.1/bin:$PATH"
+export PATH="/Applications/MAMP/Library/bin/mysql80/bin:$PATH"
 which php
 php -v
+which mysql
+mysql --version
 wp --info
 ```
 
-To make the PHP PATH change persistent, add the `export` command to `~/.zshrc`.
+Confirm `wp --info` shows MAMP's PHP binary/version and MySQL binary. The MySQL directory also supplies the tools needed by database commands. These exports affect only the current terminal session; add them to `~/.zshrc` only if you intentionally want them to persist. The MySQL client version is separate from the running database server version.
 
 ## 3. Navigate to WordPress
 
@@ -150,37 +144,74 @@ wp user list --role=administrator
 
 ## 8. Database
 
+**Local terminal, from the WordPress installation directory:** these commands use the database configured in `wp-config.php`.
+
 ```bash
-# Verify connection
+# Check MySQL table integrity (also confirms the connection)
 wp db check
 
-# Export database
+# Compare the recorded WordPress DB revision with installed core; no update
+wp core update-db --dry-run
+
+# Back up before changing data or schema
 wp db export backup.sql
 
-# Import database (overwrites matching tables)
-wp db import backup.sql
-
-# Open MySQL prompt
+# Open the configured database's MySQL prompt
 wp db cli
-
-# Optimize tables
-wp db optimize
 ```
 
-Back up the database before importing or making significant changes.
+Move `backup.sql` outside the web root after exporting; keep it out of Git. The [integrity check](https://developer.wordpress.org/cli/commands/db/check/) does not validate the expected WordPress schema. The [database revision comparison](https://developer.wordpress.org/cli/commands/core/update-db/) does not independently prove every expected column or index exists either.
+
+**Read-only SQL at the MySQL prompt:** replace `wp_` with the installation's actual table prefix.
+
+```sql
+SHOW COLUMNS FROM wp_options LIKE 'option_name';
+SHOW INDEX FROM wp_posts WHERE Key_name = 'type_status_author';
+SELECT COUNT(*) AS null_option_names FROM wp_options WHERE option_name IS NULL;
+EXIT;
+```
+
+Inspect `option_name`'s `Null` value and the index's columns/order (`Seq_in_index`), not just its name. Compare with the installed WordPress version's expected schema before planning corrections.
+
+In the stream, integrity/revision checks passed, but `option_name` still allowed NULL; `type_status_author` already existed. The NULL-record count was zero. After a local export, the column was corrected and checked again. This is a finding from that installation, not a blanket instruction to alter core tables.
+
+An `.sql` export is a snapshot. Reading it does not change the running MySQL database, and inspecting or changing the running database does not update an old export. Export again after local changes before deployment. The [planned production cutover](wordpress-mamp.md#production-database-cutover--planned-workflow) is documented separately.
 
 ## 9. Cache and Permalinks
 
+**Local terminal, from the WordPress installation directory:**
+
 ```bash
-# Flush WordPress object cache
 wp cache flush
-
-# Flush rewrite rules
-wp rewrite flush
-
-# Display permalink structure
 wp option get permalink_structure
+wp rewrite structure '/%postname%/'
+wp rewrite flush
 ```
+
+The structure command changes permalinks; use `/%postname%/` only if that is the intended format. A normal flush refreshes database rewrite rules; it does not regenerate `.htaccess`.
+
+If `.htaccess` rules need rebuilding, back up the file first and use `wp rewrite flush --hard`. For a single-site Apache install, WP-CLI also needs the following in its `wp-cli.yml` (see the [flush reference](https://developer.wordpress.org/cli/commands/rewrite/flush/)):
+
+```yaml
+apache_modules:
+  - mod_rewrite
+```
+
+Apache must load the module and read `.htaccess`. The stream's navigation returned Apache 404s even after changing/flushing WordPress permalinks. The rewrite module was commented out; enabling it and restarting MAMP made navigation work.
+
+**Local terminal:** inspect MAMP's Apache configuration:
+
+```bash
+rg -n 'rewrite_module|AllowOverride' /Applications/MAMP/conf/apache/httpd.conf
+```
+
+Ensure this line is uncommented in the active configuration:
+
+```apache
+LoadModule rewrite_module modules/mod_rewrite.so
+```
+
+If rewrites still fail, check that the `<Directory>` block for the actual document root allows `.htaccess` rewrite directives (`AllowOverride FileInfo`, or the existing broader `AllowOverride All`). Restart MAMP after Apache configuration changes, then test an inner-page URL again.
 
 ## 10. WordPress Core
 
@@ -207,8 +238,8 @@ wp core update-db
 # Display WP-CLI environment
 wp --info
 
-# Check WordPress configuration
-wp config list
+# Check the configured database name without displaying passwords
+wp config get DB_NAME
 
 # List active plugins
 wp plugin list --status=active

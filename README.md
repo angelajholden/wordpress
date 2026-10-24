@@ -10,13 +10,13 @@ These guides document my personal workflow using macOS, MAMP, WP-CLI, and Digita
 
 Step-by-step commands for migrating an existing WordPress website from a DigitalOcean LAMP server to a local MAMP installation.
 
-Includes downloading files, exporting and importing MySQL databases, updating configuration files, and replacing production URLs.
+Includes downloading files, terminal-only MySQL imports, version-specific MAMP client paths, URL replacements, and a planned production database cutover (not deployed during the October 18 stream).
 
 ### [WordPress + WP-CLI](wordpress-wpcli.md)
 
 Common WP-CLI commands for managing WordPress installations locally.
 
-Includes WordPress core, plugins, themes, users, database operations, URL updates, and troubleshooting.
+Includes session-specific MAMP PHP/MySQL PATH setup, WordPress administration, database integrity/revision/schema checks, and Apache permalink troubleshooting.
 
 ## WordPress Maintenance
 
