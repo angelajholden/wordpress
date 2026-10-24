@@ -18,31 +18,44 @@ wp --info
 
 Official documentation: https://wp-cli.org/
 
-## 2. Use MAMP's PHP
+## 2. Use MAMP's PHP and MySQL
 
-WP-CLI needs to use a PHP version compatible with the local WordPress installation.
+WP-CLI should use a PHP version compatible with MAMP. Its database commands also need the MySQL utilities (including `mysqlcheck`) on your PATH.
 
-List available MAMP PHP versions:
+Check the versions installed on your Mac:
 
 ```bash
 ls /Applications/MAMP/bin/php/
+ls /Applications/MAMP/Library/bin/
 ```
 
-Add the selected version to your terminal's PATH:
+For **MAMP PHP 8.4.1** and **MySQL 8.0**, add these lines to your `~/.zshrc` for a one-time, persistent setup:
 
 ```bash
-export PATH="/Applications/MAMP/bin/php/<php-version>/bin:$PATH"
+nano ~/.zshrc
 ```
 
-Verify:
+```bash
+export PATH="/Applications/MAMP/bin/php/php8.4.1/bin:$PATH"
+export PATH="/Applications/MAMP/Library/bin/mysql80/bin:$PATH"
+```
+
+Reload and verify:
 
 ```bash
+source ~/.zshrc
 which php
+which mysql
+which mysqlcheck
 php -v
 wp --info
 ```
 
-To make the PHP PATH change persistent, add the `export` command to `~/.zshrc`.
+> [!NOTE]
+> The versions and paths above are working MAMP examples, not universal defaults. Adjust them to your installation. Editing `~/.zshrc` changes the default command-line PHP/MySQL for **all new Terminal sessions**. If you only need MAMP in the current session, run the two `export PATH` lines directly in Terminal instead.
+
+> [!TIP]
+> If `wp db check` says `env: mysqlcheck: No such file or directory`, check `which mysqlcheck`. If PHP deprecation warnings appear from WP-CLI's dependencies, verify which PHP binary `wp --info` is using. If MySQL refuses connection on `127.0.0.1:3306`, check that MAMP is running before troubleshooting credentials.
 
 ## 3. Navigate to WordPress
 
