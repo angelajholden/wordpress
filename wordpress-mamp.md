@@ -1,93 +1,140 @@
 # WordPress → MAMP
 
-Replace `<placeholders>`. Start MAMP with `/Applications/MAMP/htdocs` as its document root; note its Apache/MySQL ports and database credentials. Have WP-CLI available with MAMP's PHP. Keep the downloaded files and SQL as backups.
+My backup and local restore snippets for WordPress sites hosted on DigitalOcean. Local setup: MAMP, Apache port **80**, MySQL port **3306**, WordPress files in `/Applications/MAMP/htdocs/`.
 
-## 1. Download WordPress files — local terminal
+The commands below use `/var/www/html` for a typical server and `angelajholden` as a local example. Change site names, remote login details, and database credentials as needed.
 
-Copy the entire installation, including hidden files and `wp-content`.
+## Back up the remote site
 
-```bash
-mkdir -p ~/Downloads/<site>
-rsync -raz --progress <ssh-user>@<server>:/<wordpress-path>/ ~/Downloads/<site>/
-```
-
-## 2. Export the database — server terminal
-
-Connect from your Mac; use the database settings from the server's `wp-config.php`. Run `mysqldump` at the shell, not the MySQL prompt; `-p` prompts for the password.
+### 1. Connect to the server — Mac terminal
 
 ```bash
-ssh <ssh-user>@<server>
-cd /<wordpress-path>
-mysqldump -u <production-db-user> -p <production-db-name> > /<private-backup-path>/<site>.sql
-exit
+ssh user@123.123.123.123
 ```
 
-## 3. Download the SQL file — local terminal
+Use the site's SSH user and droplet IP. SSH connects **from the Mac to the remote server**; it isn't needed to work on a site already downloaded.
+
+### 2. Export the database — remote server
+
+Keep database dumps **outside the web root**, not in `wp-content`.
 
 ```bash
-scp <ssh-user>@<server>:/<private-backup-path>/<site>.sql ~/Downloads/
-ls -lh ~/Downloads/<site>.sql
+sudo mkdir -p /var/www/backups
+sudo chown "$(whoami):$(id -gn)" /var/www/backups
+chmod 700 /var/www/backups
+mysqldump -u wordpress -p wordpress_db > /var/www/backups/wordpress.sql
 ```
 
-## 4. Copy WordPress into MAMP — local terminal
+Here, `wordpress` and `wordpress_db` are example MySQL user/database names; use the values in the site's `wp-config.php`. The `-p` flag prompts for the password. Run `mysqldump` at the **shell**, not inside MySQL. Confirm it finished successfully before archiving.
+
+### 3. ZIP `wp-content`, `wp-config.php`, and SQL — remote server
 
 ```bash
-mkdir -p /Applications/MAMP/htdocs/<site>
-rsync -raz --progress ~/Downloads/<site>/ /Applications/MAMP/htdocs/<site>/
+cd /var/www
+zip -r backups/wordpress-backup.zip html/wp-content html/wp-config.php backups/wordpress.sql
+unzip -l backups/wordpress-backup.zip
 ```
 
-## 5. Open MAMP's MySQL client — local terminal
+Everything goes into **one ZIP**, but neither the SQL nor ZIP is placed in the public website directory. Keep the ZIP private: it includes credentials and database contents.
 
-Enter the actual MAMP database password when prompted.
+If the site uses custom files outside `wp-content`, include those separately.
+
+### 4. Check for old forgotten backups — remote server
 
 ```bash
-cd /Applications/MAMP/Library/bin
-./mysql -h 127.0.0.1 -P <mysql-port> -u <local-db-user> -p
+find /var/www/html/wp-content -type f \( -name '*.sql' -o -name '*.sql.gz' -o -name '*.zip' -o -name '*.tar.gz' \)
 ```
 
-## 6. Create the database — MySQL prompt
+Review the results and remove abandoned backups manually. Don't blindly delete files owned by plugins.
+
+### 5. Download the ZIP — Mac terminal
+
+Preferred method: **SCP directly to the server IP**, even if the domain's A record is gone.
+
+```bash
+scp user@123.123.123.123:/var/www/backups/wordpress-backup.zip ~/Downloads/
+unzip -t ~/Downloads/wordpress-backup.zip
+```
+
+Alternative if the archive is intentionally available through a URL: `wget https://example.com/backup.zip`. **Don't remove the domain's A record before downloading and verifying your backup.** SCP is preferable because it doesn't require a public download URL or working domain DNS.
+
+You can also download a site that's already backed up without repeating the export.
+
+## Restore locally in MAMP
+
+### 6. Install fresh WordPress core — Mac
+
+Download a fresh, compatible WordPress release from [wordpress.org](https://wordpress.org/download/) and extract it to:
+
+```text
+/Applications/MAMP/htdocs/angelajholden
+```
+
+Start MAMP. Use the newly downloaded WordPress core rather than copying old core files from production. Confirm the version is compatible with the site's theme, plugins, and database before upgrading.
+
+### 7. Extract the backup and restore `wp-content` — Mac terminal
+
+```bash
+mkdir -p ~/Downloads/wordpress-restore
+unzip ~/Downloads/wordpress-backup.zip -d ~/Downloads/wordpress-restore
+rsync -a ~/Downloads/wordpress-restore/html/wp-content/ /Applications/MAMP/htdocs/angelajholden/wp-content/
+```
+
+The extracted archive also contains `html/wp-config.php` and `backups/wordpress.sql`. Keep the original ZIP as a backup.
+
+### 8. Connect to MAMP MySQL — Mac terminal
+
+```bash
+/Applications/MAMP/Library/bin/mysql80/bin/mysql -h 127.0.0.1 -P 3306 -u root -p
+```
+
+Enter your MAMP MySQL password when prompted.
+
+### 9. Create and import the database — MySQL prompt
 
 ```sql
-CREATE DATABASE `<local-db-name>` CHARACTER SET utf8mb4;
-```
-
-## 7. Import the SQL file — MySQL prompt
-
-Use a new, empty database; importing over existing tables can overwrite them. Use the SQL file's absolute Mac path.
-
-```sql
-USE `<local-db-name>`;
-source /Users/<mac-user>/Downloads/<site>.sql
+CREATE DATABASE angelajholden CHARACTER SET utf8mb4;
+USE angelajholden;
+source /Users/angelajholden/Downloads/wordpress-restore/backups/wordpress.sql
 SHOW TABLES;
 EXIT;
 ```
 
-## 8. Update `wp-config.php` — local file
+The `source` path uses your Mac's download folder. Import into a new, empty database; change the database name if it already exists.
 
-Edit `/Applications/MAMP/htdocs/<site>/wp-config.php`; replace existing definitions and preserve `$table_prefix`.
+### 10. Configure `wp-config.php` — Mac
+
+Use the saved `html/wp-config.php` as a reference (especially for **multisite** settings). Copy it into the local WordPress root if appropriate, then change its database settings:
 
 ```php
-define( 'DB_NAME', '<local-db-name>' );
-define( 'DB_USER', '<local-db-user>' );
-define( 'DB_PASSWORD', '<local-db-password>' );
-define( 'DB_HOST', '127.0.0.1:<mysql-port>' );
+define( 'DB_NAME', 'angelajholden' );
+define( 'DB_USER', 'root' );
+define( 'DB_PASSWORD', 'your-local-mamp-password' );
+define( 'DB_HOST', '127.0.0.1:3306' );
 ```
 
-## 9. Replace URLs — local terminal
+Keep the correct `$table_prefix`. Review custom constants, salts, and multisite network settings; don't reuse production-only URLs or settings without checking them. Never commit `wp-config.php`.
 
-The original SQL is your backup. Confirm the database settings point locally before running these commands. Use the actual production URL; update any `WP_HOME`/`WP_SITEURL` constants locally too.
+### 11. Replace URLs — Mac terminal
+
+Use WP-CLI with MAMP's PHP; see [wordpress-wpcli.md](wordpress-wpcli.md). Replace the **actual previous site URL** below:
 
 ```bash
-cd /Applications/MAMP/htdocs/<site>
+cd /Applications/MAMP/htdocs/angelajholden
 wp option get home
 wp option get siteurl
-wp search-replace 'https://<production-domain>' 'http://localhost:<apache-port>/<site>' --all-tables-with-prefix --skip-columns=guid --dry-run
-wp search-replace 'https://<production-domain>' 'http://localhost:<apache-port>/<site>' --all-tables-with-prefix --skip-columns=guid
+wp search-replace 'https://example.com' 'http://localhost/angelajholden' --all-tables-with-prefix --skip-columns=guid --dry-run
+wp search-replace 'https://example.com' 'http://localhost/angelajholden' --all-tables-with-prefix --skip-columns=guid
 wp rewrite flush
+wp db check
 ```
 
-Review the dry run first. WP-CLI preserves serialized data; avoid the notes' `sed`/SQL `REPLACE()` migration commands, which can corrupt serialized values.
+Review the dry run first. WP-CLI handles serialized data correctly; don't use `sed` or plain SQL `REPLACE()` for WordPress URL migrations. Check any `WP_HOME` / `WP_SITEURL` constants in `wp-config.php`. **Multisite URL migrations require additional network-specific checks.**
 
-## 10. Test locally — browser
+### 12. Test locally
 
-Open `http://localhost:<apache-port>/<site>/` and `/wp-admin/`. Check login, pages, images, and permalinks; save **Settings → Permalinks** if needed. Do not run the WordPress installer for an imported site.
+Open `http://localhost/angelajholden/` and `http://localhost/angelajholden/wp-admin/`. Check login, pages, media, and permalinks. If inner pages return Apache 404 errors, check that `mod_rewrite` is enabled in MAMP and that Apache allows `.htaccess` overrides.
+
+Don't run the WordPress installer for an imported site. If WordPress asks for a database update after changing core versions, use its normal database upgrade process.
+
+**Final reminder:** Verify the downloaded ZIP before changing DNS, deleting the droplet, or removing the original backup. Keep old backups private and check `wp-content` for abandoned SQL/ZIP files.
