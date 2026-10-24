@@ -8,13 +8,26 @@ This is an existing website that must continue functioning as expected. Preserve
 
 **IMPORTANT: This is an audit-only task. Do not implement changes until I have reviewed and explicitly approved your recommendations.**
 
+## File Modification Boundaries
+
+This site may use a framework such as **Genesis**. Identify the active custom theme, its parent theme (if any), and which files belong to each **before** proposing changes.
+
+- **Only files in the site's custom theme/child theme are eligible for modification**, and only after I explicitly approve implementation. This includes custom theme PHP, JavaScript, CSS, and theme-owned build files when applicable.
+- **Never modify parent theme or framework files**, including Genesis. Inspect them read-only as needed. If a fix involves the parent theme, recommend a child-theme hook, filter, override, or a supported framework update instead.
+- **Never modify installed plugin files**, including third-party, custom, and must-use plugins. Inspect them read-only and report compatibility problems; recommend official updates or supported fixes instead of editing plugin source.
+- **Never modify WordPress core**, `wp-config.php`, uploads, SQL dumps, or database records. Do not install/update/deactivate plugins, run migrations, or change server configuration.
+- If a proposed fix cannot be made inside the custom child theme, **report it and ask first**; do not work around these restrictions by editing other directories.
+- During this audit, **do not change any files at all**. Approval to implement theme fixes later does not authorize changes outside the custom theme.
+
+
+
 ## 1. Project Review
 
 Begin by inspecting the local repository and identifying:
 
 - WordPress version, if available
 - Current PHP version and compatibility requirements
-- Active WordPress theme and any parent/child theme relationships
+- Active custom theme, its directory, any parent theme/framework (such as Genesis), and the boundaries between them
 - Custom PHP functions, templates, hooks, and filters
 - Installed plugins and their versions, where available
 - JavaScript and jQuery dependencies
@@ -90,7 +103,7 @@ Distinguish between installed plugins, active plugins, and dependencies merely r
 
 Do not assume a plugin is unnecessary simply because its functionality is not obvious from the theme.
 
-Do not update, deactivate, or remove anything.
+Do not update, deactivate, remove, or edit any plugins. Refer to the file modification boundaries above.
 
 ## 5. Security and Code Maintainability
 
