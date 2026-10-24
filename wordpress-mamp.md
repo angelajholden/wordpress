@@ -45,7 +45,16 @@ If the site uses custom files outside `wp-content`, include those separately.
 find /var/www/html/wp-content -type f \( -name '*.sql' -o -name '*.sql.gz' -o -name '*.zip' -o -name '*.tar.gz' \)
 ```
 
-Review the results and remove abandoned backups manually. Don't blindly delete files owned by plugins.
+> [!WARNING]
+> **Remove temporary SQL exports from the remote server after downloading and verifying your backup.** Check `wp-content` and other public directories especially. Database dumps must never be left publicly accessible. Retain only backups you intentionally store in a protected location.
+>
+> Once you've confirmed the downloaded ZIP contains the database, you can remove the temporary export created in step 2:
+>
+> ```bash
+> rm /var/www/backups/wordpress.sql
+> ```
+>
+> Review the `find` results before removing anything else; don't blindly delete files owned by plugins.
 
 ### 5. Download the ZIP — Mac terminal
 
@@ -56,7 +65,10 @@ scp user@123.123.123.123:/var/www/backups/wordpress-backup.zip ~/Downloads/
 unzip -t ~/Downloads/wordpress-backup.zip
 ```
 
-Alternative if the archive is intentionally available through a URL: `wget https://example.com/backup.zip`. **Don't remove the domain's A record before downloading and verifying your backup.** SCP is preferable because it doesn't require a public download URL or working domain DNS.
+Alternative if the archive is intentionally available through a URL: `wget https://example.com/backup.zip`. SCP is preferable because it doesn't require a public download URL or working domain DNS.
+
+> [!WARNING]
+> **Do not delete or change the domain's A record until you've downloaded and verified your backup.** If DNS no longer points to the server, a `wget` download using the domain may fail. Use `scp` with the droplet's IP address instead.
 
 You can also download a site that's already backed up without repeating the export.
 
