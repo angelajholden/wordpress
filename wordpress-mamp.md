@@ -1,75 +1,65 @@
 # WordPress → MAMP
 
-Replace `<placeholders>`. Start MAMP with `/Applications/MAMP/htdocs` as its document root; note its Apache/MySQL ports and database credentials. Configure WP-CLI with MAMP's PHP/MySQL using [wordpress-wpcli.md](wordpress-wpcli.md#2-use-mamps-php-and-mysql). Keep the downloaded files and SQL as backups.
+Replace placeholders consistently; see [conventions](README.md#conventions). Use compatible PHP/MySQL versions. Start MAMP with `/Applications/MAMP/htdocs` as its document root and note its actual Apache/MySQL ports and credentials. Configure [WP-CLI's local PATH](wordpress-wpcli.md#2-select-mamps-php-and-mysql) before using it.
 
-Stream example (October 18, 2026): Apache **80**, MySQL **3306**, PHP **8.4.1**, MySQL **8.0 client**, and MAMP's local **root** account. These are examples, not universal defaults; the client version does not identify the running server version. At Apache port 80, use `http://localhost/<site>` without a port suffix.
+## Local installation
 
-## 1. Download WordPress files — local terminal
+### 1. Download files — local terminal
 
-Copy the entire installation, including hidden files and `wp-content`.
+Copy the full installation, including hidden files and `wp-content`, into an empty destination. Keep this download as a backup.
 
 ```bash
 mkdir -p ~/Downloads/<site>
 rsync -raz --progress <ssh-user>@<server>:/<wordpress-path>/ ~/Downloads/<site>/
 ```
 
-## 2. Export the database — server terminal
+### 2. Export the database — local terminal, then remote terminal
 
-Connect from your Mac; use the database settings from the server's `wp-config.php`. Run `mysqldump` at the shell, not the MySQL prompt; `-p` prompts for the password.
+Run SSH locally. Run `mysqldump` on the server using the existing `wp-config.php` database settings; `-p` prompts for the password. Add the configured host/port if the database is not on the default local connection. Store the export outside the web root and continue only after it succeeds.
 
 ```bash
 ssh <ssh-user>@<server>
-cd /<wordpress-path>
-mysqldump -u <production-db-user> -p <production-db-name> > /<private-backup-path>/<site>.sql
+```
+
+**Remote terminal:**
+
+```bash
+mysqldump -u <production-db-user> -p <production_db_name> > /<private-backup-path>/<site>.sql
 exit
 ```
 
-## 3. Download the SQL file — local terminal
+### 3. Download SQL and copy files into MAMP — local terminal
 
 ```bash
 scp <ssh-user>@<server>:/<private-backup-path>/<site>.sql ~/Downloads/
 ls -lh ~/Downloads/<site>.sql
-```
-
-## 4. Copy WordPress into MAMP — local terminal
-
-```bash
 mkdir -p /Applications/MAMP/htdocs/<site>
 rsync -raz --progress ~/Downloads/<site>/ /Applications/MAMP/htdocs/<site>/
 ```
 
-## 5. Open MAMP's MySQL client — local terminal
+### 4. Connect to MAMP MySQL — local terminal
 
-Locate the installed executable; `/Applications/MAMP/Library/bin/mysql` did not exist in the stream installation. Use the path matching your selected MySQL version. This MySQL 8.0 path worked; enter your actual local password when prompted.
+Locate the executable using the [PATH setup](wordpress-wpcli.md#2-select-mamps-php-and-mysql). For example, MySQL 8.0 may be at `/Applications/MAMP/Library/bin/mysql80/bin/mysql`; use your installed path. With that directory on PATH:
 
 ```bash
-find /Applications/MAMP/Library -type f -name mysql
-/Applications/MAMP/Library/bin/mysql80/bin/mysql -h 127.0.0.1 -P <mysql-port> -u <local-db-user> -p
+mysql -h 127.0.0.1 -P <mysql-port> -u <local-db-user> -p
 ```
 
-## 6. Create the database — MySQL prompt
+### 5. Create and import — local MySQL prompt
 
-Use a simple database name with letters, numbers, and underscores.
+Use a new empty database. Imports can overwrite existing tables; stop on errors. Keep the original SQL backup unchanged.
 
 ```sql
 CREATE DATABASE <local_db_name> CHARACTER SET utf8mb4;
-SHOW DATABASES;
-```
-
-## 7. Import the SQL file — MySQL prompt
-
-Use a new, empty database; importing over existing tables can overwrite them. Use the SQL file's absolute Mac path.
-
-```sql
 USE <local_db_name>;
 source /Users/<mac-user>/Downloads/<site>.sql
 SHOW TABLES;
 EXIT;
 ```
 
-## 8. Update `wp-config.php` — local file
+### 6. Configure WordPress — local file edit
 
-Edit `/Applications/MAMP/htdocs/<site>/wp-config.php`; replace existing definitions and preserve `$table_prefix`.
+Edit `/Applications/MAMP/htdocs/<site>/wp-config.php`. Replace existing definitions and preserve the imported `$table_prefix`.
 
 ```php
 define( 'DB_NAME', '<local_db_name>' );
@@ -78,9 +68,9 @@ define( 'DB_PASSWORD', '<local-db-password>' );
 define( 'DB_HOST', '127.0.0.1:<mysql-port>' );
 ```
 
-## 9. Replace URLs — local terminal
+### 7. Replace URLs — local terminal
 
-The original SQL is your backup. Confirm the database settings point locally before running these commands. Use the actual production URL; update any `WP_HOME`/`WP_SITEURL` constants locally too.
+Confirm the database connection is local. Update any `WP_HOME`/`WP_SITEURL` overrides in the local configuration too. Use the actual production URL, including `www` or an installation path. Preserve any intentional difference between `home` and `siteurl`.
 
 ```bash
 cd /Applications/MAMP/htdocs/<site>
@@ -91,39 +81,41 @@ wp search-replace 'https://<production-domain>' 'http://localhost:<apache-port>/
 wp rewrite flush
 ```
 
-Review the dry run first. WP-CLI preserves serialized data; avoid the notes' `sed`/SQL `REPLACE()` migration commands, which can corrupt serialized values.
+Review the dry run before applying. WP-CLI preserves serialized data; plain SQL `REPLACE()` or `sed` can corrupt serialized string lengths. Leave GUIDs unchanged. At Apache port 80, the port suffix may be omitted.
 
-## 10. Test locally — browser
+### 8. Test — local browser and terminal
 
-Open `http://localhost:<apache-port>/<site>/` and `/wp-admin/`. Check login, pages, images, and permalinks. For Apache 404s, use the short [permalink/rewrite checks](wordpress-wpcli.md#9-cache-and-permalinks). Run the [database checks](wordpress-wpcli.md#8-database) before development. Do not run the WordPress installer for an imported site.
+Open `http://localhost:<apache-port>/<site>/` and `/wp-admin/`. Check login, pages, media, theme rendering, and permalinks. Do not run the installer for a restored site. Use the [database checks](wordpress-wpcli.md#8-check-the-database) and [rewrite checks](wordpress-wpcli.md#9-check-cache-and-permalinks) when needed.
 
-## Production database cutover — planned workflow
+## Production database cutover
 
-Discussed during the stream; **not deployed or tested there**. Finish development/database updates locally and test first. This replaces production content: account for new posts, users, orders, and other writes before making local data authoritative. Use a controlled maintenance window that blocks visitor/background writes through cutover and testing; the new database can be prepared beforehand. Keep deployed WordPress files compatible with the local database.
+Finish local development and testing first. This replaces production content: account for new posts, users, orders, and other writes before making the local database authoritative. Prepare the new database ahead of time if useful, then block visitor/background writes during cutover and testing. Ensure deployed WordPress files are compatible with the updated database.
 
-### 1. Export locally and upload — local terminal
+### 1. Export and upload — local terminal
 
 ```bash
 cd /Applications/MAMP/htdocs/<site>
 wp db export /Users/<mac-user>/Downloads/<site>-updated.sql
 scp /Users/<mac-user>/Downloads/<site>-updated.sql <ssh-user>@<server>:/<private-backup-path>/
+ssh <ssh-user>@<server>
 ```
 
-### 2. Back up production and prepare a new database — server terminal
+### 2. Back up production — remote terminal
 
-Use the current production connection settings for the backup; confirm the export succeeds before continuing. Preserve the old database and connection details privately for rollback.
+Use the current connection settings. Confirm the export succeeds and retain the old database and credentials privately for rollback.
 
 ```bash
-ssh <ssh-user>@<server>
-mysqldump -u <current-db-user> -p <current_db_name> > /<private-backup-path>/production-before-cutover.sql
+mysqldump -u <production-db-user> -p <production_db_name> > /<private-backup-path>/production-before-cutover.sql
 mysql -u <mysql-admin-user> -p
 ```
 
-**MySQL prompt:** use a new database/user name and password. Match the user host to the production database connection (this example uses `localhost`).
+### 3. Create a new database/user and import — remote MySQL prompt
+
+Match the user host to the production connection; this example uses `localhost`. Confirm the SQL contains no `USE` or qualified database names that would redirect the import elsewhere. Stop on import errors.
 
 ```sql
 CREATE DATABASE <new_db_name> CHARACTER SET utf8mb4;
-CREATE USER '<new-db-user>'@'localhost' IDENTIFIED BY '<new-password>';
+CREATE USER '<new-db-user>'@'localhost' IDENTIFIED BY '<new-db-password>';
 GRANT ALL PRIVILEGES ON <new_db_name>.* TO '<new-db-user>'@'localhost';
 USE <new_db_name>;
 source /<private-backup-path>/<site>-updated.sql
@@ -131,25 +123,25 @@ SHOW TABLES;
 EXIT;
 ```
 
-Import only into the new empty database; stop on errors. Check the SQL has no `USE` or qualified database names that redirect the import elsewhere.
+### 4. Switch the connection — remote file edit
 
-### 3. Switch the connection — production `wp-config.php`
+During the maintenance window, update production `wp-config.php` with the new `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. Keep the correct production `DB_HOST` and imported table prefix. Set any `WP_HOME`/`WP_SITEURL` overrides to production.
 
-During the maintenance window, replace `DB_NAME`, `DB_USER`, and `DB_PASSWORD` with the new connection details. Keep the correct production `DB_HOST` and imported table prefix. Update any `WP_HOME`/`WP_SITEURL` overrides to production too.
+### 5. Check and replace URLs — remote terminal
 
-### 4. Check, replace URLs, and test — server terminal
-
-After the config change, WP-CLI targets the **newly configured database**. Confirm that target before writing. Until URL replacement finishes, the imported site may redirect to localhost; keep visitors blocked.
+WP-CLI now uses the newly configured database. Confirm the target before writing. Keep visitors blocked until replacement and testing finish; the imported site may initially redirect to localhost.
 
 ```bash
 cd /<wordpress-path>
 wp config get DB_NAME
 wp db check
-wp search-replace 'http://localhost/<site>' 'https://<production-domain>' --all-tables-with-prefix --skip-columns=guid --dry-run
-wp search-replace 'http://localhost/<site>' 'https://<production-domain>' --all-tables-with-prefix --skip-columns=guid
+wp search-replace 'http://localhost:<apache-port>/<site>' 'https://<production-domain>' --all-tables-with-prefix --skip-columns=guid --dry-run
+wp search-replace 'http://localhost:<apache-port>/<site>' 'https://<production-domain>' --all-tables-with-prefix --skip-columns=guid
 wp rewrite flush
 ```
 
-Use the exact local URL, including a nonstandard port if applicable. Review the dry run before applying; WP-CLI preserves serialized data. Test the production home page, admin login, media, and inner-page permalinks before reopening traffic.
+Use the exact local URL stored in the database, omitting the port suffix if it was omitted locally. Review the dry run before applying.
 
-Retain the original database and saved connection details. Restoring that connection is a rollback option only while the original database is intact; account for any post-cutover writes before switching back.
+### 6. Test and retain rollback — production browser
+
+Test the home page, admin login, media, and inner-page permalinks before reopening traffic. Retain the original database and connection details. Restoring that connection is a rollback option only while the original database remains intact; reconcile any post-cutover writes before switching back.
