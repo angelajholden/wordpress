@@ -1,85 +1,209 @@
-# WordPress Technical and Database Audit
+# Codex: WordPress Technical and Database Audit
 
-Use this checklist to audit an existing WordPress installation. Inspect and report only; do not implement changes until recommendations have been reviewed and explicitly approved. Preserve working behavior and avoid unnecessary modernization.
+Perform a comprehensive technical audit of this existing WordPress website, including its custom theme, PHP code, JavaScript, jQuery, plugins, dependencies, and MySQL database.
 
-## Plugin restriction — audits and future implementation
+The goal is to identify compatibility problems, outdated code, security concerns, database issues, and opportunities to improve reliability and maintainability.
 
-**Codex must NEVER modify WordPress plugin source files.** This applies to `wp-content/plugins/`, must-use plugins, and every other installed plugin directory, during both audits and future implementation work.
+This is an existing website that must continue functioning as expected. Preserve its existing functionality and avoid unnecessary modernization.
 
-- Plugin-file inspection is strictly read-only.
-- Do not edit, patch, rewrite, replace, or delete plugin files, including PHP, JavaScript, CSS, and configuration files.
-- Do not install, update, activate, deactivate, or remove plugins.
-- Do not execute WP-CLI plugin-management commands, including `wp plugin list`.
-- Do not create custom patches for third-party plugins or alter installed plugins to resolve PHP warnings or errors.
-- If a problem is found, document it and recommend an officially supported solution. Plugin actions require separate explicit user approval; approval of other audit recommendations does not authorize them. Never treat implementation approval as permission to modify plugin source.
+**IMPORTANT: This is an audit-only task. Do not implement changes until I have reviewed and explicitly approved your recommendations.**
 
-The commands in [wordpress-wpcli.md](wordpress-wpcli.md#5-plugins--manual-reference-only) are manual references, not authorization for Codex to execute them.
+## 1. Project Review
 
-## 1. Establish the project baseline
+Begin by inspecting the local repository and identifying:
 
-Inspect available files and record:
+- WordPress version, if available
+- Current PHP version and compatibility requirements
+- Active WordPress theme and any parent/child theme relationships
+- Custom PHP functions, templates, hooks, and filters
+- Installed plugins and their versions, where available
+- JavaScript and jQuery dependencies
+- Composer, npm, and other package dependencies
+- Existing build tools, where relevant
+- The local SQL database export and its structure
 
-- WordPress and PHP versions, distinguishing known versions from compatibility estimates.
-- Active theme and parent/child relationship, where confirmed.
-- Custom PHP functions, templates, hooks, and integrations.
-- Installed plugins and available version metadata, using read-only file inspection; do not infer activation from directory presence.
-- JavaScript, jQuery, Composer/npm dependencies, and existing build tools.
-- Available SQL exports and their database structures.
+Establish the current state of the project before making recommendations.
 
-Identify missing information rather than assuming it. Do not run package scripts or make changes during inspection.
+If something cannot be determined from the repository, explain what additional information would be needed.
 
-## 2. Review PHP and WordPress compatibility
+## 2. PHP and WordPress Compatibility
 
-Inspect custom code for deprecated/removed PHP features, outdated WordPress APIs, fatal errors, type assumptions, error handling, and inefficient queries. Apply the read-only restriction to any plugin code.
+Review the custom theme and any available custom plugin code for:
 
-Record the affected file/function, likely runtime impact, and compatible PHP/WordPress versions where supported by evidence. Separate necessary compatibility fixes from optional improvements. Do not recommend rewriting working code solely because it is old.
+- Deprecated or removed PHP functions
+- PHP 8.x compatibility problems
+- Deprecated WordPress functions, hooks, and APIs
+- Incorrect or outdated WordPress API usage
+- PHP warnings, notices, and potential fatal errors
+- Code that may break with WordPress or PHP upgrades
+- Incorrect assumptions about PHP data types or return values
+- Error handling and reliability concerns
+- Inefficient or unnecessary database queries
+- Duplicated or unnecessarily complicated PHP functionality
 
-## 3. Review JavaScript and jQuery
+Identify which PHP and WordPress versions the code currently appears compatible with.
 
-Check deprecated APIs, bundled WordPress jQuery compatibility, duplicate dependencies, asset enqueue order, browser errors, and outdated build dependencies. Recommend vanilla JavaScript only where it offers a clear benefit; preserve behavior and avoid new frameworks.
+Recommend a practical upgrade path if compatibility problems exist. Do not assume the newest available version is appropriate without evaluating dependencies.
 
-## 4. Review plugins and dependencies
+Distinguish between changes that are necessary for compatibility and optional code improvements.
 
-Inspect metadata and source read-only for maintenance status, compatibility concerns, deprecated APIs, security issues, conflicts, and dependencies that block upgrades. Distinguish confirmed use from files merely present on disk.
+Do not recommend rewriting working code solely because it uses an older but supported approach.
 
-Do not assume an unfamiliar plugin is unnecessary. Document supported upgrade/replacement options for separate review; follow the mandatory plugin restriction above.
+## 3. JavaScript and jQuery
 
-## 5. Review security and maintainability
+Review the theme's JavaScript and jQuery implementation for:
 
-Check custom PHP/JavaScript for:
+- Deprecated jQuery methods and APIs
+- Outdated or unsupported JavaScript libraries
+- Compatibility with WordPress-bundled jQuery
+- Potential JavaScript errors or broken functionality
+- Duplicate or conflicting dependencies
+- Incorrect script registration and enqueueing
+- Improper dependency declarations or load order
+- Unnecessary reliance on jQuery
+- Opportunities to simplify code using vanilla JavaScript
+- Outdated build tools and package dependencies
+- Potential incompatibilities with future WordPress updates
 
-- Input validation, sanitization, and output escaping.
-- SQL injection, XSS, unsafe AJAX/REST handlers, nonce checks, and capability checks.
-- Hardcoded secrets, unsafe file handling, and external integrations.
-- Duplicated code, unreliable error handling, and unnecessary custom implementations of WordPress APIs.
+Recommend replacing jQuery only where doing so offers a clear benefit.
 
-Separate confirmed vulnerabilities from concerns requiring investigation. Never reproduce credentials, hashes, tokens, or private user data in the report.
+Avoid unnecessary rewrites or introducing new frameworks.
 
-## 6. Inspect the database snapshot
+Preserve existing behavior and functionality.
 
-If an SQL export is available, inspect it without importing it. Do not connect to local or production MySQL without explicit approval. A snapshot may differ from the running database; label conclusions accordingly.
+## 4. Plugin and Dependency Compatibility
+
+Review available plugin information, custom integrations, and dependency manifests.
+
+Identify:
+
+- Outdated plugin versions
+- Plugins that may no longer be maintained
+- Known compatibility concerns with newer PHP or WordPress versions
+- Deprecated APIs used by custom plugins or integrations
+- Potential conflicts between plugins
+- Unnecessary or duplicated dependencies
+- Dependencies that could prevent PHP or WordPress upgrades
+- Custom functionality dependent on legacy plugins
+
+Distinguish between installed plugins, active plugins, and dependencies merely referenced in the code.
+
+Do not assume a plugin is unnecessary simply because its functionality is not obvious from the theme.
+
+Do not update, deactivate, or remove anything.
+
+## 5. Security and Code Maintainability
+
+Inspect the custom PHP and JavaScript for:
+
+- Missing input validation and sanitization
+- Missing output escaping
+- SQL injection vulnerabilities
+- Cross-site scripting vulnerabilities
+- Unsafe AJAX or REST API handlers
+- Missing nonce verification
+- Missing user capability checks
+- Hardcoded credentials or sensitive information
+- Insecure file handling or uploads
+- Unsafe external API integrations
+- Deprecated or potentially vulnerable dependencies
+- Duplicate functions and unnecessary code
+- Poorly organized custom functionality
+- Custom implementations that could use supported WordPress APIs
+
+Identify confirmed security issues separately from potential vulnerabilities requiring further investigation.
+
+Do not expose sensitive values in the audit report.
+
+## 6. MySQL Database Audit
+
+The local repository contains a `.sql` file exported from the WordPress database.
+
+Inspect this file as part of the audit. Do not connect to the local MySQL server unless I explicitly approve it.
+
+### Database Structure and Compatibility
 
 Review:
 
-- Core, custom, and plugin tables; column types, keys, indexes, character sets, and collations.
-- Schema compatibility with the installed WordPress/MySQL versions.
-- Serialized data and possible migration damage.
-- Potential orphaned metadata, inconsistent references, duplicate records, and broken relationships.
-- Large autoloaded options, transient/revision growth, and inefficient queries supported by code evidence.
-- Legacy plugin tables/options and sensitive data that should not be stored or committed.
+- WordPress core tables
+- Custom tables
+- Plugin-created tables
+- Table structures and column definitions
+- Primary keys and indexes
+- Character sets and collations
+- Deprecated database patterns
+- Potential compatibility issues with current supported MySQL versions
+- Potential issues with future WordPress upgrades
 
-Do not equate size with a performance defect. Do not propose deleting unfamiliar tables or records without confirming ownership and use. Avoid changes to core tables unless a confirmed mismatch requires investigation; a recorded WordPress database revision alone does not prove schema correctness.
+Pay particular attention to custom tables and plugin-generated structures.
 
-If live checks are needed, request approval and refer to the [database inspection procedure](wordpress-wpcli.md#8-check-the-database). Do not execute it as part of a file-only audit.
+Avoid recommending direct modifications to standard WordPress core tables unless a confirmed problem requires investigation.
 
-## 7. Report and prioritize
+### Database Performance and Optimization
 
-For each finding, provide:
+Look for:
 
-1. Affected file, function, dependency, table, or column.
-2. Evidence and whether the finding is confirmed or needs verification.
-3. Practical impact and priority.
-4. Recommended action, compatibility requirements, and risks.
-5. Validation steps and backup/rollback needs for any future change.
+- Excessively large autoloaded options
+- Potentially inefficient custom tables or indexes
+- Unnecessary or redundant indexes
+- Large amounts of transient data
+- Excessive post revisions
+- Potentially unused plugin tables
+- Unnecessary database records
+- Storage patterns that may affect performance
+- Inefficient database usage in custom PHP code
 
-Keep plugin findings read-only and recommend officially supported solutions for separate approval. Do not implement recommendations, execute maintenance commands, or change data during the audit.
+Do not assume that large tables or large amounts of data automatically indicate a problem.
+
+Consider how WordPress and its plugins use the data before recommending cleanup.
+
+### Data Integrity
+
+Look for potential issues involving:
+
+- Orphaned post metadata
+- Orphaned user metadata
+- Orphaned term relationships
+- Inconsistent data relationships
+- Invalid or unexpected references
+- Duplicate records where uniqueness is expected
+- Custom tables with potential integrity problems
+- Serialized data that may have been damaged during previous migrations
+
+Distinguish between problems that can be confirmed from the SQL export and those requiring additional database queries.
+
+### Plugin and Legacy Data
+
+Identify:
+
+- Tables potentially associated with removed plugins
+- Legacy plugin settings
+- Unused options
+- Old migration artifacts
+- Potentially abandoned custom tables
+- Data structures associated with outdated functionality
+
+Do not recommend deleting tables or records without identifying what created them and whether they are still required.
+
+### Database Security
+
+Check for:
+
+- Sensitive configuration values stored unnecessarily
+- Potentially exposed credentials or API keys
+- Insecure data storage patterns
+- Legacy authentication-related structures
+- Sensitive information that should not be committed to version control
+
+Do not reproduce passwords, password hashes, API keys, tokens, personal information, or other sensitive values in the report.
+
+### Database Recommendations
+
+For each finding, explain:
+
+1. Which table or structure is affected.
+2. What the issue is.
+3. Why it matters.
+4. Whether the issue is confirmed or requires additional investigation.
+5. What improvement is recommended.
+6. Any potential risks to WordPress
