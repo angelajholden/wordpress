@@ -133,8 +133,29 @@ Review the dry run first. WP-CLI handles serialized data correctly; don't use `s
 
 ### 12. Test locally
 
-Open `http://localhost/angelajholden/` and `http://localhost/angelajholden/wp-admin/`. Check login, pages, media, and permalinks. If inner pages return Apache 404 errors, check that `mod_rewrite` is enabled in MAMP and that Apache allows `.htaccess` overrides.
+Open `http://localhost/angelajholden/` and `http://localhost/angelajholden/wp-admin/`. Check login, pages, media, and permalinks. If inner pages return Apache 404 errors, follow the Apache rewrite steps below.
 
 Don't run the WordPress installer for an imported site. If WordPress asks for a database update after changing core versions, use its normal database upgrade process.
+
+### Apache mod_rewrite — fix permalink 404s (MAMP)
+
+If the home page works but URLs like `/blog/` show a plain **Apache 404**, check MAMP's rewrite module.
+
+**Mac terminal:**
+
+```bash
+grep -n 'rewrite_module' /Applications/MAMP/conf/apache/httpd.conf
+nano /Applications/MAMP/conf/apache/httpd.conf
+```
+
+Find this line and remove the leading `#` if present:
+
+```apache
+LoadModule rewrite_module modules/mod_rewrite.so
+```
+
+Save the file, **stop and restart MAMP's servers**, then test an inner page again. This was the fix during the stream.
+
+If pages still 404, check that Apache allows `.htaccess` overrides for `/Applications/MAMP/htdocs` (`AllowOverride All` or the appropriate rewrite permissions). Also verify that the site's `.htaccess` contains the correct WordPress rewrite rules.
 
 **Final reminder:** Verify the downloaded ZIP before changing DNS, deleting the droplet, or removing the original backup. Keep old backups private and check `wp-content` for abandoned SQL/ZIP files.
