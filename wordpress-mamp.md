@@ -82,6 +82,40 @@ rsync -a ~/Downloads/wordpress-restore/html/wp-content/ /Applications/MAMP/htdoc
 
 The extracted archive also contains `html/wp-config.php` and `backups/wordpress.sql`. Keep the original ZIP as a backup.
 
+### One-time terminal PATH setup — Mac
+
+Add MAMP's PHP and MySQL tools to your shell so `wp`, `mysql`, and `mysqlcheck` work in new Terminal windows. This example uses **PHP 8.4.1** and **MySQL 8.0**; check the versions installed in your MAMP first.
+
+```bash
+ls /Applications/MAMP/bin/php/
+ls /Applications/MAMP/Library/bin/
+nano ~/.zshrc
+```
+
+Add these lines to `~/.zshrc`:
+
+```bash
+export PATH="/Applications/MAMP/bin/php/php8.4.1/bin:$PATH"
+export PATH="/Applications/MAMP/Library/bin/mysql80/bin:$PATH"
+```
+
+Save, reload, and verify:
+
+```bash
+source ~/.zshrc
+which php
+which mysql
+which mysqlcheck
+php -v
+wp --info
+```
+
+> [!NOTE]
+> This is **optional, one-time setup**. These lines make MAMP's PHP/MySQL tools the defaults in new Terminal sessions, including outside WordPress projects. Remove or adjust them when switching versions or using another environment. For only the current session, run the two `export PATH` commands in Terminal without editing `~/.zshrc`.
+
+> [!TIP]
+> If `wp db check` reports `env: mysqlcheck: No such file or directory`, verify `which mysqlcheck` and your PATH. If MySQL reports `ERROR 2003` / connection refused, start MAMP's MySQL server and verify port **3306** before changing passwords.
+
 ### 8. Connect to MAMP MySQL — Mac terminal
 
 ```bash
