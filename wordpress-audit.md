@@ -12,14 +12,12 @@ This is an existing website that must continue functioning as expected. Preserve
 
 This site may use a framework such as **Genesis**. Identify the active custom theme, its parent theme (if any), and which files belong to each **before** proposing changes.
 
-- **Only files in the site's custom theme/child theme are eligible for modification**, and only after I explicitly approve implementation. This includes custom theme PHP, JavaScript, CSS, and theme-owned build files when applicable.
+- **Only files in the site's custom theme or child theme are eligible for modification**, and only after I explicitly approve implementation. This includes custom theme PHP, JavaScript, CSS, and theme-owned build files when applicable.
 - **Never modify parent theme or framework files**, including Genesis. Inspect them read-only as needed. If a fix involves the parent theme, recommend a child-theme hook, filter, override, or a supported framework update instead.
 - **Never modify installed plugin files**, including third-party, custom, and must-use plugins. Inspect them read-only and report compatibility problems; recommend official updates or supported fixes instead of editing plugin source.
 - **Never modify WordPress core**, `wp-config.php`, uploads, SQL dumps, or database records. Do not install/update/deactivate plugins, run migrations, or change server configuration.
 - If a proposed fix cannot be made inside the custom child theme, **report it and ask first**; do not work around these restrictions by editing other directories.
 - During this audit, **do not change any files at all**. Approval to implement theme fixes later does not authorize changes outside the custom theme.
-
-
 
 ## 1. Project Review
 
@@ -130,9 +128,7 @@ Do not expose sensitive values in the audit report.
 
 ## 6. MySQL Database Audit
 
-The local repository contains a `.sql` file exported from the WordPress database.
-
-Inspect this file as part of the audit. Do not connect to the local MySQL server unless I explicitly approve it.
+If a local `.sql` export of the WordPress database is available, inspect it as part of the audit. If none is present, note that the database analysis could not be completed from the repository. Do not connect to the local MySQL server unless I explicitly approve it.
 
 ### Database Structure and Compatibility
 
@@ -219,4 +215,36 @@ For each finding, explain:
 3. Why it matters.
 4. Whether the issue is confirmed or requires additional investigation.
 5. What improvement is recommended.
-6. Any potential risks to WordPress
+6. Any potential risks to WordPress, plugins, data integrity, and future upgrades.
+
+Do not modify the database, delete records, run cleanup tools, or issue WP-CLI commands that write to the database during this audit. Recommend a backup and validation plan for any separately approved database work.
+
+## 7. Findings and Recommendations
+
+Provide an actionable audit report rather than an unprioritized list of possible improvements.
+
+For each finding, include:
+
+- **Priority:** High (security, data loss, broken functionality), Medium (compatibility or maintainability risk), or Low (optional improvement).
+- **Evidence:** File path and line numbers, log excerpt, table name, plugin version, or other specific evidence when available.
+- **Status:** Confirmed, suspected, or needs runtime verification. Do not present assumptions as facts.
+- **Impact:** Why the issue matters to this website.
+- **Recommendation:** The smallest practical fix, and whether it belongs in the custom theme, a supported vendor update, server configuration, or a separately authorized database operation.
+- **Validation:** How to test the proposed fix and protect existing behavior.
+
+Separate security and compatibility fixes from optional modernization. Identify any items that cannot be evaluated without runtime access, server configuration, an actual database connection, or the full plugin installation.
+
+## 8. Final Report
+
+Organize the results as follows:
+
+1. **Environment and scope:** What was inspected, relevant versions, theme/parent-theme relationships, and what was unavailable.
+2. **Priority findings:** A concise high/medium/low table with evidence and recommended actions.
+3. **Theme and frontend:** PHP, WordPress hooks, JavaScript, jQuery, styles, and accessible interactions.
+4. **Plugins and dependencies:** Compatibility findings and supported vendor actions. Never edit plugin source.
+5. **Database:** Findings supported by the export, plus checks that would require separate approval.
+6. **Recommended next steps:** Small, ordered changes that preserve the existing website.
+
+If there are no findings in a category, say so rather than inventing issues. Do not recommend broad refactoring merely to make old code look modern.
+
+**Stop after the report. Do not edit files, change settings, run updates, modify the database, commit, or deploy anything without a separate explicit instruction.**
